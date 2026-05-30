@@ -138,7 +138,7 @@ signed int main(unsigned int argc, char *argv[])
     {
         if (argc == 3)
         {
-            searchPackage(argv[2]);
+            searchAurPackage(argv[2]);
         }
         else
         {
