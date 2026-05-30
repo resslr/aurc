@@ -3,9 +3,11 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <pwd.h>
+#include "colors.h"
 
-char *getCurrentUserShell()
+static char *getCurrentUserShell()
 {
     struct passwd *pw = getpwuid(getuid());
     if (pw == NULL || pw->pw_shell == NULL)
@@ -15,88 +17,59 @@ char *getCurrentUserShell()
     }
 
     char *shellName = strrchr(pw->pw_shell, '/');
-    if (shellName != NULL)
-    {
-        shellName++;
-    }
-    else
-    {
-        shellName = pw->pw_shell;
-    }
+    shellName = shellName ? shellName + 1 : pw->pw_shell;
 
     char *shell = strdup(shellName);
-    if (shell == NULL)
-    {
+    if (!shell)
         perror("strdup");
-    }
-
     return shell;
 }
 
-void executeCommandWithUserShell(char *command)
+int executeCommandWithUserShell(const char *command)
 {
-    if (command == NULL || strlen(command) == 0)
+    if (!command || command[0] == '\0')
     {
-        fprintf(stderr, "Invalid command. Exiting.\n");
-        exit(EXIT_FAILURE);
+        fprintf(stderr, "Invalid command.\n");
+        return -1;
     }
-    size_t commandLength = strlen(command);
-    char *commandWithReset = malloc(commandLength + strlen("; echo -e '\033[0m'") + 1);
-    if (commandWithReset == NULL)
-    {
-        perror("Failed to allocate memory for commandWithReset");
-        exit(EXIT_FAILURE);
-    }
-    strncpy(commandWithReset, command, commandLength);
-    strncpy(commandWithReset + commandLength, "; echo -e '\033[0m'", strlen("; echo -e '\033[0m'") + 1);
 
     char *userShell = getCurrentUserShell();
-
-    if (userShell == NULL)
+    if (!userShell)
     {
-        fprintf(stderr, "Unable to detect user's shell. Fallback to system() for command execution.\n");
-
-        if (system(commandWithReset) == -1)
-        {
-            perror("Failed to execute command with system");
-            exit(EXIT_FAILURE);
-        }
-
-        free(commandWithReset);
-        return;
+        fprintf(stderr, "Unable to detect shell, falling back to system().\n");
+        int r = system(command);
+        printf(RESET);
+        return r;
     }
-    printf("Executing command with user's shell: %s\n", userShell);
 
-    char *argv[] = {userShell, "-c", commandWithReset, NULL};
+    char *argv[] = {userShell, "-c", (char *)command, NULL};
 
     pid_t pid = fork();
     if (pid == -1)
     {
-        perror("Failed to fork process");
+        perror("fork");
         free(userShell);
-        free(commandWithReset);
-        exit(EXIT_FAILURE);
+        return -1;
     }
     else if (pid == 0)
     {
-        if (execvp(userShell, argv) == -1)
-        {
-            perror("Failed to execute command with execvp");
-            exit(EXIT_FAILURE);
-        }
+        execvp(userShell, argv);
+        perror("execvp");
+        _exit(EXIT_FAILURE);
     }
-    else
+
+    int status;
+    if (waitpid(pid, &status, 0) == -1)
     {
-        int status;
-        if (waitpid(pid, &status, 0) == -1)
-        {
-            perror("Failed to wait for child process");
-            free(userShell);
-            free(commandWithReset);
-            exit(EXIT_FAILURE);
-        }
+        perror("waitpid");
+        free(userShell);
+        return -1;
     }
 
     free(userShell);
-    free(commandWithReset);
+    printf(RESET);
+
+    if (WIFEXITED(status))
+        return WEXITSTATUS(status);
+    return -1;
 }
