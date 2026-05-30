@@ -3,11 +3,31 @@
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 #include "constants.h"
 #include "colors.h"
 
 int existingAurPackage(const char *packageName);
 void installAurPackages(char **packageNames, unsigned int numPackages);
+
+static int packageInRepos(const char *name)
+{
+    pid_t pid = fork();
+    if (pid == -1)
+        return 0;
+    if (pid == 0)
+    {
+        int devnull = open("/dev/null", O_WRONLY);
+        if (devnull != -1) { dup2(devnull, 1); dup2(devnull, 2); close(devnull); }
+        execlp("pacman", "pacman", "-Si", "--", name, NULL);
+        _exit(1);
+    }
+    int status;
+    waitpid(pid, &status, 0);
+    return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
 
 void executePacmanCommand(int argc, char *argv[], const char *commandPrefix, const char *usageMessage)
 {
@@ -92,10 +112,7 @@ void installPackages(int argc, char *argv[])
 
     for (int i = 0; i < numPackages; i++)
     {
-        char checkCmd[MAX_COMMAND_LENGTH];
-        snprintf(checkCmd, sizeof(checkCmd), "pacman -Si %s > /dev/null 2>&1", packages[i]);
-
-        if (system(checkCmd) == 0)
+        if (packageInRepos(packages[i]))
         {
             repoPackages[repoCount++] = packages[i];
         }
