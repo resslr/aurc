@@ -146,11 +146,12 @@ void installPackages(int argc, char *argv[])
 
     if (aurCount > 0)
     {
-        char answer[4];
+        char answer[16];
         printf("Install %d AUR package%s (%s) via makepkg? (y/n): ",
                aurCount, aurCount == 1 ? "" : "s",
                aurPackages[0]);
         fgets(answer, sizeof(answer), stdin);
+        if (!strchr(answer, '\n')) { int c; while ((c = getchar()) != '\n' && c != EOF); }
         if (tolower(answer[0]) == 'y' || answer[0] == '\n')
             installAurPackages(aurPackages, (unsigned int)aurCount);
     }

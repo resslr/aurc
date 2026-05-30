@@ -13,6 +13,16 @@
 
 void displayPkgBuild(const char *packageName, const char *downloadDir);
 
+static void drainStdin(const char *buf)
+{
+    if (!strchr(buf, '\n'))
+    {
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF)
+            ;
+    }
+}
+
 typedef struct
 {
     char *data;
@@ -163,9 +173,10 @@ void installAurPackages(char **packageNames, unsigned int numPackages)
         snprintf(extractCommand, sizeof(extractCommand), "tar -xzf %s -C %s", tarPath, downloadDir);
         system(extractCommand);
 
-        char userInput[4];
+        char userInput[16];
         printf("View PKGBUILD for '%s' before installation? (Recommended) (y/n): ", packageName);
         fgets(userInput, sizeof(userInput), stdin);
+        drainStdin(userInput);
         if (userInput[0] == '\n')
             userInput[0] = 'y';
 
@@ -175,6 +186,7 @@ void installAurPackages(char **packageNames, unsigned int numPackages)
 
             printf("Continue with installation of '%s'? (y/n): ", packageName);
             fgets(userInput, sizeof(userInput), stdin);
+            drainStdin(userInput);
             if (userInput[0] == '\n')
                 userInput[0] = 'y';
 
