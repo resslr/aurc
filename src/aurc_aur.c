@@ -86,7 +86,7 @@ void installAurPackages(char **packageNames, unsigned int numPackages)
     }
 
     regex_t regex;
-    int reti = regcomp(&regex, "^[a-zA-Z0-9_+-\\.]+$", REG_EXTENDED);
+    int reti = regcomp(&regex, "^[a-zA-Z0-9@._+-]+$", REG_EXTENDED);
     if (reti)
     {
         fprintf(stderr, "Failed to compile regex\n");
