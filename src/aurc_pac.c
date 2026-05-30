@@ -158,14 +158,7 @@ void installPackages(int argc, char *argv[])
 
 void removePackages(int argc, char *argv[])
 {
-    if (argc < 3)
-    {
-        fprintf(stderr, RED "Usage: %s remove <package1> ...\n" RESET, argv[0]);
-        return;
-    }
-    char command[MAX_COMMAND_LENGTH];
-    snprintf(command, sizeof(command), "sudo pacman -R %s", argv[2]);
-    executeCommandWithUserShell(command);
+    executePacmanCommand(argc, argv, "sudo pacman -R ", "remove <package1> ...");
 }
 
 void queryPackage(char *packageName)
@@ -188,14 +181,7 @@ void searchPackage(char *packageName)
 
 void removePackagesWithDependencies(int argc, char *argv[])
 {
-    if (argc < 3)
-    {
-        fprintf(stderr, RED "Usage: %s remove-dep <package1> ...\n" RESET, argv[0]);
-        return;
-    }
-    char command[MAX_COMMAND_LENGTH];
-    snprintf(command, sizeof(command), "sudo pacman -Rs %s", argv[2]);
-    executeCommandWithUserShell(command);
+    executePacmanCommand(argc, argv, "sudo pacman -Rs ", "remove-dep <package1> ...");
 }
 
 void removeOrphanPackages()
