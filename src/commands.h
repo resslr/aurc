@@ -29,6 +29,28 @@ CommandType getCommandType(const char *str)
     return CMD_UNKNOWN;
 }
 
+const char *getShorthandAction(const char *flag)
+{
+    if (strcmp(flag, "-S")    == 0) return "install";
+    if (strcmp(flag, "-Sa")   == 0) return "install-aur";
+    if (strcmp(flag, "-Sl")   == 0) return "install-local";
+    if (strcmp(flag, "-Sf")   == 0) return "install-force";
+    if (strcmp(flag, "-R")    == 0) return "remove";
+    if (strcmp(flag, "-Rs")   == 0) return "remove-dep";
+    if (strcmp(flag, "-Rdd")  == 0) return "remove-force";
+    if (strcmp(flag, "-Rdds") == 0) return "remove-force-dep";
+    if (strcmp(flag, "-Ro")   == 0) return "remove-orp";
+    if (strcmp(flag, "-Ss")   == 0) return "search";
+    if (strcmp(flag, "-Ssa")  == 0) return "search-aur";
+    if (strcmp(flag, "-Q")    == 0) return "query";
+    if (strcmp(flag, "-Syu")  == 0) return "update";
+    if (strcmp(flag, "-Su")   == 0) return "self-update";
+    if (strcmp(flag, "-Syy")  == 0) return "refresh";
+    if (strcmp(flag, "-C")    == 0) return "clear-aur-cache";
+    if (strcmp(flag, "-Me")   == 0) return "modify-repo";
+    return NULL;
+}
+
 void handleConfigCommand(int argc, char *argv[])
 {
     // Error handling

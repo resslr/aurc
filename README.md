@@ -85,6 +85,38 @@ aurc [command] [package(s)]
 
 Running `aurc` with no arguments performs a full system upgrade — equivalent to `pacman -Syyu` followed by an AUR packages update check.
 
+### Shorthands
+
+Every command has a short flag alias — same position as the action word:
+
+| Short | Full command |
+|---|---|
+| `-S` | `install` |
+| `-Sa` | `install-aur` |
+| `-Sl` | `install-local` |
+| `-Sf` | `install-force` |
+| `-R` | `remove` |
+| `-Rs` | `remove-dep` |
+| `-Rdd` | `remove-force` |
+| `-Rdds` | `remove-force-dep` |
+| `-Ro` | `remove-orp` |
+| `-Ss` | `search` |
+| `-Ssa` | `search-aur` |
+| `-Q` | `query` |
+| `-Syu` | `update` |
+| `-Su` | `self-update` |
+| `-Syy` | `refresh` |
+| `-Me` | `modify-repo` |
+| `-C` | `clear-aur-cache` |
+
+```bash
+aurc -S neovim          # same as: aurc install neovim
+aurc -Sa spotify        # same as: aurc install-aur spotify
+aurc -Ssa python        # same as: aurc search-aur python
+aurc -R firefox         # same as: aurc remove firefox
+aurc -Q git             # same as: aurc query git
+```
+
 ### Commands
 
 **Installation**

@@ -27,30 +27,32 @@ signed int main(unsigned int argc, char *argv[])
     if (argc == 2 && getCommandType(argv[1]) == CMD_HELP)
     {
         printf("Aurc Package Manager - Help\n\n");
-        printf("Usage: %s <action> [package_name]\n", argv[0]);
-        printf("\nActions:\n");
-        printf("  " GREEN "update" GREEN RESET "           Update outdated system/user packages\n");
-        printf("  " GREEN "self-update" RESET "      Update aurc itself to the latest version\n");
-        printf("  " GREEN "refresh" GREEN RESET "          Refresh Repository Database\n");
-        printf("  " GREEN "install" RESET "          Install packages\n");
-        printf("  " GREEN "install-local" RESET "    Install a local package\n");
-        printf("  " GREEN "install-aur" RESET "      Install aur package\n");
-        printf("  " GREEN "github" RESET "           Checkout our GitHub!\n");
-        printf("  " GREEN "config" RESET "           Configure your Aurc!\n");
-        printf("  " YELLOW "install-force" RESET "    Forcefully install packages\n");
-        printf("  " YELLOW "modify-repo" RESET "      Modify arch repositories\n");
-        printf("  " YELLOW "query" RESET "            Query if a package is installed\n");
-        printf("  " YELLOW "search" RESET "           Search for a package in the base repository\n");
-        printf("  " YELLOW "search-aur [-s]" RESET "   Search AUR by relevance with interactive filter (-s for exact match only)\n");
-        printf("  " RED "remove" RESET "           Remove packages\n");
-        printf("  " RED "remove-dep" RESET "       Remove packages along with its dependencies\n");
-        printf("  " RED "remove-force" RESET "     Forcefully remove packages even if other packages depend on it\n");
-        printf("  " RED "remove-force-dep" RESET " Forcefully remove packages even if other packages depend on it along with its dependencies\n");
-        printf("  " RED "remove-orp" RESET "       Remove orphan packages\n");
+        printf("Usage: %s [action] [package(s)]\n", argv[0]);
+        printf("       %s (no args) — full system + AUR upgrade\n\n", argv[0]);
+        printf("%-32s %s\n", "Action", "Short");
+        printf("%-32s %s\n", "──────────────────────────────", "─────");
+        printf(GREEN "  %-30s" RESET " %s\n", "update",          "-Syu");
+        printf(GREEN "  %-30s" RESET " %s\n", "self-update",     "-Su");
+        printf(GREEN "  %-30s" RESET " %s\n", "refresh",         "-Syy");
+        printf(GREEN "  %-30s" RESET " %s\n", "install",         "-S");
+        printf(GREEN "  %-30s" RESET " %s\n", "install-aur",     "-Sa");
+        printf(GREEN "  %-30s" RESET " %s\n", "install-local",   "-Sl");
+        printf(GREEN "  %-30s" RESET " %s\n", "config",          "");
+        printf(GREEN "  %-30s" RESET " %s\n", "github",          "");
+        printf(YELLOW "  %-30s" RESET " %s\n", "install-force",  "-Sf");
+        printf(YELLOW "  %-30s" RESET " %s\n", "modify-repo",    "-Me");
+        printf(YELLOW "  %-30s" RESET " %s\n", "query",          "-Q");
+        printf(YELLOW "  %-30s" RESET " %s\n", "search",         "-Ss");
+        printf(YELLOW "  %-30s" RESET " %s\n", "search-aur [-s]","-Ssa");
+        printf(YELLOW "  %-30s" RESET " %s\n", "clear-aur-cache","-C");
+        printf(RED    "  %-30s" RESET " %s\n", "remove",         "-R");
+        printf(RED    "  %-30s" RESET " %s\n", "remove-dep",     "-Rs");
+        printf(RED    "  %-30s" RESET " %s\n", "remove-force",   "-Rdd");
+        printf(RED    "  %-30s" RESET " %s\n", "remove-force-dep","-Rdds");
+        printf(RED    "  %-30s" RESET " %s\n", "remove-orp",     "-Ro");
         printf("\nOptions:\n");
-        printf("  --version, -v    Display the version of the package manager\n");
-        printf("  --help, -h       Display this help guide\n");
-        printf("  --editor, -e     Set the default text editor (Must use config, Ex: aurc config -e editor)\n");
+        printf("  --version, -v    Show version\n");
+        printf("  --help, -h       Show this help\n");
         return 0;
     }
     if (argc == 2 && getCommandType(argv[1]) == CMD_VERSION)
@@ -71,9 +73,9 @@ signed int main(unsigned int argc, char *argv[])
         return 0;
     }
 
-    char *action = argv[1];
+    const char *mapped = getShorthandAction(argv[1]);
+    char *action = mapped ? (char *)mapped : argv[1];
 
-    // Check if the action is valid
     if (!isValidAction(action))
     {
         fprintf(stderr, RED "Invalid action: %s\n" RESET, action);
