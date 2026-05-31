@@ -20,6 +20,7 @@
 - Full AUR support — download, inspect PKGBUILD, build with `makepkg`
 - **Smart install** — `aurc install <pkg>` checks official repos first, falls back to AUR automatically
 - PKGBUILD review prompt before every AUR installation
+- Built-in `self-update` — keeps aurc current without any third-party tools
 - Configure your preferred editor for mirrorlist editing
 
 ## Requirements
@@ -42,13 +43,7 @@
 
 ## Installation
 
-**Via AUR** (recommended — updates automatically):
-
-```bash
-yay -S aurc
-```
-
-**Via PKGBUILD:**
+**Via PKGBUILD** (recommended):
 
 ```bash
 curl -L https://github.com/resslr/aurc/releases/latest/download/aurc-pkgbuild.tar.gz -o aurc-pkgbuild.tar.gz
@@ -64,38 +59,23 @@ wget https://github.com/resslr/aurc/releases/latest/download/aurc-${version}-x86
 sudo pacman -U aurc-${version}-x86_64.pkg.tar.zst
 ```
 
-## Building from Source
-
-Install build dependencies:
+**From source:**
 
 ```bash
-sudo pacman -S gcc make base-devel curl json-c libarchive
-```
-
-Clone and build:
-
-```bash
+sudo pacman -S gcc make base-devel curl json-c libarchive git
 git clone https://github.com/resslr/aurc.git
-cd aurc/src
-sudo make install
+cd aurc/src && sudo make install
 ```
 
 ## Updating
 
-**Via AUR:**
+Once installed, aurc can update itself:
 
 ```bash
-yay
-# or
-aurc update && aurc install-aur aurc
+aurc self-update
 ```
 
-**From source:**
-
-```bash
-git pull
-cd src && sudo make clean install
-```
+This clones the latest source, rebuilds, and reinstalls automatically.
 
 ## Usage
 
@@ -129,7 +109,7 @@ aurc <command> [package(s)]
 | Command | Description |
 |---|---|
 | `search <query>` | Search official repositories |
-| `search-aur <query>` | Search the AUR |
+| `search-aur <query>` | Search the AUR, sorted by relevance with interactive filter |
 | `query <pkg>` | Check if a package is installed |
 
 **System**
@@ -137,6 +117,7 @@ aurc <command> [package(s)]
 | Command | Description |
 |---|---|
 | `update` | Update all system packages (`pacman -Syyu`) |
+| `self-update` | Update aurc to the latest version |
 | `refresh` | Refresh repository databases |
 | `modify-repo` | Edit `/etc/pacman.d/mirrorlist` in your configured editor |
 | `clear-aur-cache` | Clear the AUR build cache (`~/.cache/aurc/`) |
@@ -153,14 +134,17 @@ aurc <command> [package(s)]
 
 ```bash
 # Smart install — finds in repos, or falls back to AUR
-aurc install neovim yay-bin
+aurc install neovim
 
-# Inspect and install an AUR package manually
-aurc install-aur paru-bin
+# Inspect and install an AUR package directly
+aurc install-aur spotify
 
-# Search AUR
-aurc search-aur spotify
+# Search AUR with interactive filter
+aurc search-aur python
 
 # Remove multiple packages
 aurc remove firefox thunderbird
+
+# Keep aurc up to date
+aurc self-update
 ```
