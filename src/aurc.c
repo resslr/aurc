@@ -69,7 +69,7 @@ signed int main(unsigned int argc, char *argv[])
 
     if (argc < 2)
     {
-        fullUpdate();
+        fullUpdate(argv[0]);
         return 0;
     }
 
@@ -80,6 +80,29 @@ signed int main(unsigned int argc, char *argv[])
     {
         fprintf(stderr, RED "Invalid action: %s\n" RESET, action);
         return 1;
+    }
+
+    /* Re-exec with sudo for write operations that libalpm needs root for */
+    static const char *needsRoot[] = {
+        "update", "refresh", "install-force", "install-local",
+        "remove", "remove-dep", "remove-force", "remove-force-dep", "remove-orp",
+        NULL
+    };
+    if (geteuid() != 0)
+    {
+        for (int ri = 0; needsRoot[ri]; ri++)
+        {
+            if (strcmp(action, needsRoot[ri]) == 0)
+            {
+                char **sudoArgv = malloc(((size_t)argc + 2) * sizeof(char *));
+                sudoArgv[0] = "sudo";
+                for (int i = 0; i < argc; i++) sudoArgv[i + 1] = argv[i];
+                sudoArgv[argc + 1] = NULL;
+                execvp("sudo", sudoArgv);
+                perror("sudo");
+                return 1;
+            }
+        }
     }
 
     if (strcmp(action, "install") == 0)

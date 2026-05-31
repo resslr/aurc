@@ -8,6 +8,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <regex.h>
+#include <dirent.h>
+#include <alpm.h>
+#include <alpm_list.h>
 #include <json-c/json.h>
 #include "colors.h"
 
@@ -455,64 +458,53 @@ static int vercmpResult(const char *v1, const char *v2)
 static InstalledPkg *getForeignPackages(int *count)
 {
     *count = 0;
-    int pipefd[2];
-    if (pipe(pipefd) == -1)
+
+    alpm_errno_t err;
+    alpm_handle_t *handle = alpm_initialize("/", "/var/lib/pacman", &err);
+    if (!handle)
         return NULL;
 
-    pid_t pid = fork();
-    if (pid == 0)
+    /* Register sync DBs so we can detect which packages are foreign */
+    DIR *dir = opendir("/var/lib/pacman/sync");
+    if (dir)
     {
-        dup2(pipefd[1], STDOUT_FILENO);
-        close(pipefd[0]);
-        close(pipefd[1]);
-        execlp("pacman", "pacman", "-Qm", NULL);
-        _exit(1);
+        struct dirent *entry;
+        while ((entry = readdir(dir)) != NULL)
+        {
+            size_t len = strlen(entry->d_name);
+            if (len > 3 && strcmp(entry->d_name + len - 3, ".db") == 0)
+            {
+                char name[256];
+                snprintf(name, sizeof(name), "%.*s", (int)(len - 3), entry->d_name);
+                alpm_register_syncdb(handle, name, ALPM_SIG_USE_DEFAULT);
+            }
+        }
+        closedir(dir);
     }
-    close(pipefd[1]);
 
-    CurlBuffer raw = {NULL, 0};
-    char chunk[512];
-    ssize_t n;
-    while ((n = read(pipefd[0], chunk, sizeof(chunk))) > 0)
-    {
-        char *newData = realloc(raw.data, raw.size + (size_t)n + 1);
-        if (!newData)
-            break;
-        raw.data = newData;
-        memcpy(raw.data + raw.size, chunk, (size_t)n);
-        raw.size += (size_t)n;
-        raw.data[raw.size] = '\0';
-    }
-    close(pipefd[0]);
+    alpm_list_t *syncdbs = alpm_get_syncdbs(handle);
+    alpm_db_t *localdb = alpm_get_localdb(handle);
+    alpm_list_t *allpkgs = alpm_db_get_pkgcache(localdb);
 
-    int wstatus;
-    waitpid(pid, &wstatus, 0);
-
-    if (!raw.data)
-        return NULL;
-
-    int lineCount = 0;
-    for (size_t i = 0; i < raw.size; i++)
-        if (raw.data[i] == '\n')
-            lineCount++;
-
-    InstalledPkg *pkgs = calloc(lineCount + 1, sizeof(InstalledPkg));
-    if (!pkgs)
-    {
-        free(raw.data);
-        return NULL;
-    }
+    int total = (int)alpm_list_count(allpkgs);
+    InstalledPkg *pkgs = calloc(total, sizeof(InstalledPkg));
+    if (!pkgs) { alpm_release(handle); return NULL; }
 
     int idx = 0;
-    char *line = strtok(raw.data, "\n");
-    while (line && idx <= lineCount)
+    for (alpm_list_t *i = allpkgs; i; i = alpm_list_next(i))
     {
-        if (sscanf(line, "%255s %127s", pkgs[idx].name, pkgs[idx].version) == 2)
+        alpm_pkg_t *pkg = i->data;
+        const char *pname = alpm_pkg_get_name(pkg);
+        if (!alpm_find_dbs_satisfier(handle, syncdbs, pname))
+        {
+            strncpy(pkgs[idx].name, pname, sizeof(pkgs[idx].name) - 1);
+            strncpy(pkgs[idx].version, alpm_pkg_get_version(pkg),
+                    sizeof(pkgs[idx].version) - 1);
             idx++;
-        line = strtok(NULL, "\n");
+        }
     }
 
-    free(raw.data);
+    alpm_release(handle);
     *count = idx;
     return pkgs;
 }
