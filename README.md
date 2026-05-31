@@ -80,8 +80,10 @@ This clones the latest source, rebuilds, and reinstalls automatically.
 ## Usage
 
 ```
-aurc <command> [package(s)]
+aurc [command] [package(s)]
 ```
+
+Running `aurc` with no arguments performs a full system upgrade — equivalent to `pacman -Syyu` followed by an AUR packages update check.
 
 ### Commands
 
@@ -117,7 +119,8 @@ aurc <command> [package(s)]
 
 | Command | Description |
 |---|---|
-| `update` | Update all system packages (`pacman -Syyu`) |
+| *(no args)* | Full upgrade — system packages + all AUR packages |
+| `update` | Update system packages only (`pacman -Syyu`) |
 | `self-update` | Update aurc to the latest version |
 | `refresh` | Refresh repository databases |
 | `modify-repo` | Edit `/etc/pacman.d/mirrorlist` in your configured editor |

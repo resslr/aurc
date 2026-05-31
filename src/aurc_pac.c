@@ -11,6 +11,7 @@
 
 int existingAurPackage(const char *packageName);
 void installAurPackages(char **packageNames, unsigned int numPackages);
+void upgradeAurPackages(void);
 
 static int packageInRepos(const char *name)
 {
@@ -193,6 +194,14 @@ void removeOrphanPackages()
 void updateSystem()
 {
     executeCommandWithUserShell("sudo pacman -Syyu");
+}
+
+void fullUpdate()
+{
+    printf(GREEN "::" RESET " Updating system packages...\n\n");
+    updateSystem();
+    printf("\n" GREEN "::" RESET " Checking AUR packages for updates...\n\n");
+    upgradeAurPackages();
 }
 
 void refreshRepo()

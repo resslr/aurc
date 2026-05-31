@@ -67,8 +67,8 @@ signed int main(unsigned int argc, char *argv[])
 
     if (argc < 2)
     {
-        printf("Usage: %s -h (for detailed help)\n", argv[0]);
-        return 1;
+        fullUpdate();
+        return 0;
     }
 
     char *action = argv[1];

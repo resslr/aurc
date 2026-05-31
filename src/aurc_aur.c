@@ -418,6 +418,228 @@ void searchAurPackage(const char *query, int specific)
     freePackages(pkgs, count);
 }
 
+/* ── AUR upgrade ─────────────────────────────────────────────────────────── */
+
+typedef struct
+{
+    char name[256];
+    char version[128];
+} InstalledPkg;
+
+static int vercmpResult(const char *v1, const char *v2)
+{
+    int pipefd[2];
+    if (pipe(pipefd) == -1)
+        return 0;
+
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        dup2(pipefd[1], STDOUT_FILENO);
+        close(pipefd[0]);
+        close(pipefd[1]);
+        execlp("vercmp", "vercmp", v1, v2, NULL);
+        _exit(1);
+    }
+    close(pipefd[1]);
+
+    char buf[32] = {0};
+    read(pipefd[0], buf, sizeof(buf) - 1);
+    close(pipefd[0]);
+
+    int status;
+    waitpid(pid, &status, 0);
+    return atoi(buf);
+}
+
+static InstalledPkg *getForeignPackages(int *count)
+{
+    *count = 0;
+    int pipefd[2];
+    if (pipe(pipefd) == -1)
+        return NULL;
+
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        dup2(pipefd[1], STDOUT_FILENO);
+        close(pipefd[0]);
+        close(pipefd[1]);
+        execlp("pacman", "pacman", "-Qm", NULL);
+        _exit(1);
+    }
+    close(pipefd[1]);
+
+    CurlBuffer raw = {NULL, 0};
+    char chunk[512];
+    ssize_t n;
+    while ((n = read(pipefd[0], chunk, sizeof(chunk))) > 0)
+    {
+        char *newData = realloc(raw.data, raw.size + (size_t)n + 1);
+        if (!newData)
+            break;
+        raw.data = newData;
+        memcpy(raw.data + raw.size, chunk, (size_t)n);
+        raw.size += (size_t)n;
+        raw.data[raw.size] = '\0';
+    }
+    close(pipefd[0]);
+
+    int wstatus;
+    waitpid(pid, &wstatus, 0);
+
+    if (!raw.data)
+        return NULL;
+
+    int lineCount = 0;
+    for (size_t i = 0; i < raw.size; i++)
+        if (raw.data[i] == '\n')
+            lineCount++;
+
+    InstalledPkg *pkgs = calloc(lineCount + 1, sizeof(InstalledPkg));
+    if (!pkgs)
+    {
+        free(raw.data);
+        return NULL;
+    }
+
+    int idx = 0;
+    char *line = strtok(raw.data, "\n");
+    while (line && idx <= lineCount)
+    {
+        if (sscanf(line, "%255s %127s", pkgs[idx].name, pkgs[idx].version) == 2)
+            idx++;
+        line = strtok(NULL, "\n");
+    }
+
+    free(raw.data);
+    *count = idx;
+    return pkgs;
+}
+
+void upgradeAurPackages()
+{
+    int installedCount = 0;
+    InstalledPkg *installed = getForeignPackages(&installedCount);
+
+    if (installedCount == 0)
+    {
+        printf("No foreign/AUR packages installed.\n");
+        free(installed);
+        return;
+    }
+
+    printf("Checking %d AUR package%s for updates...\n",
+           installedCount, installedCount == 1 ? "" : "s");
+
+    size_t urlCap = 64;
+    for (int i = 0; i < installedCount; i++)
+        urlCap += strlen(installed[i].name) + 8;
+
+    char *url = malloc(urlCap);
+    if (!url)
+    {
+        free(installed);
+        return;
+    }
+
+    int w = snprintf(url, urlCap, "https://aur.archlinux.org/rpc/?v=5&type=info");
+    for (int i = 0; i < installedCount; i++)
+        w += snprintf(url + w, urlCap - (size_t)w, "&arg[]=%s", installed[i].name);
+
+    CurlBuffer buf = {NULL, 0};
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    CURL *curl = curl_easy_init();
+    if (curl)
+    {
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, growingWriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buf);
+        CURLcode res = curl_easy_perform(curl);
+        curl_easy_cleanup(curl);
+        if (res != CURLE_OK)
+        {
+            fprintf(stderr, RED "AUR query failed: %s\n" RESET, curl_easy_strerror(res));
+            free(buf.data);
+            free(url);
+            free(installed);
+            curl_global_cleanup();
+            return;
+        }
+    }
+    curl_global_cleanup();
+    free(url);
+
+    if (!buf.data)
+    {
+        free(installed);
+        return;
+    }
+
+    struct json_object *parsed = json_tokener_parse(buf.data);
+    free(buf.data);
+    if (!parsed)
+    {
+        free(installed);
+        return;
+    }
+
+    struct json_object *results_obj;
+    if (!json_object_object_get_ex(parsed, "results", &results_obj))
+    {
+        json_object_put(parsed);
+        free(installed);
+        return;
+    }
+
+    int resultCount = json_object_array_length(results_obj);
+    char **toUpdate = malloc((size_t)installedCount * sizeof(char *));
+    int updateCount = 0;
+
+    for (int i = 0; i < resultCount; i++)
+    {
+        struct json_object *pkg = json_object_array_get_idx(results_obj, i);
+        struct json_object *name_obj, *ver_obj;
+
+        json_object_object_get_ex(pkg, "Name", &name_obj);
+        json_object_object_get_ex(pkg, "Version", &ver_obj);
+        if (!name_obj || !ver_obj)
+            continue;
+
+        const char *aurName = json_object_get_string(name_obj);
+        const char *aurVer = json_object_get_string(ver_obj);
+
+        for (int j = 0; j < installedCount; j++)
+        {
+            if (strcmp(installed[j].name, aurName) == 0)
+            {
+                if (vercmpResult(installed[j].version, aurVer) < 0)
+                {
+                    printf("  " YELLOW "%s" RESET " %s -> " GREEN "%s" RESET "\n",
+                           aurName, installed[j].version, aurVer);
+                    toUpdate[updateCount++] = strdup(aurName);
+                }
+                break;
+            }
+        }
+    }
+
+    json_object_put(parsed);
+    free(installed);
+
+    if (updateCount == 0)
+        printf(GREEN "All AUR packages are up to date.\n" RESET);
+    else
+    {
+        printf("\n");
+        installAurPackages(toUpdate, (unsigned int)updateCount);
+    }
+
+    for (int i = 0; i < updateCount; i++)
+        free(toUpdate[i]);
+    free(toUpdate);
+}
+
 void displayPkgBuild(const char *packageName, const char *downloadDir)
 {
     char displayCommand[600];
