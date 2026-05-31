@@ -275,7 +275,27 @@ void selfUpdate()
         goto cleanup;
     }
 
-    printf("Building and installing...\n");
+    printf("Building...\n");
+
+    char buildCmd[256];
+    snprintf(buildCmd, sizeof(buildCmd), "cd %s/src && make build", tmpDir);
+
+    pid = fork();
+    if (pid == -1) { perror("fork"); goto cleanup; }
+    if (pid == 0)
+    {
+        execlp("sh", "sh", "-c", buildCmd, NULL);
+        _exit(1);
+    }
+    waitpid(pid, &status, 0);
+
+    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+    {
+        fprintf(stderr, RED "Build failed.\n" RESET);
+        goto cleanup;
+    }
+
+    printf("Installing...\n");
 
     snprintf(installCmd, sizeof(installCmd), "cd %s/src && sudo make install", tmpDir);
 
@@ -291,7 +311,7 @@ void selfUpdate()
     if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
         printf(GREEN "aurc updated successfully.\n" RESET);
     else
-        fprintf(stderr, RED "Build or install failed.\n" RESET);
+        fprintf(stderr, RED "Install failed.\n" RESET);
 
 cleanup:
     snprintf(rmCmd, sizeof(rmCmd), "rm -rf %s", tmpDir);

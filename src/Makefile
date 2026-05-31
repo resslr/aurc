@@ -22,7 +22,7 @@ CC = gcc
 install : build
 
 	@echo "installing binary file to ${INSTALLPATH}/${BIN}"
-	@cp build/${BIN} ${INSTALLPATH}
+	@cp --remove-destination build/${BIN} ${INSTALLPATH}/${BIN}
 	@chmod 0755 ${INSTALLPATH}/${BIN}
 	@echo "installed"
 
