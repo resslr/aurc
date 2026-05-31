@@ -1,151 +1,166 @@
-# Aurc
-Fast Easy way to Install and Update Aur and Non-Aur Arch Linux Packages!
+# aurc
 
-- This project is now under the wavly org as a rewritten project
-EMAIL ON THE AUR PKGBUILD IS EXPIRED; MESSAGE ME ONLY BY MY PROFILE LINKS ANYONE ELSE IS AN IMPERSONATOR
+> A fast, secure package manager wrapper for Arch Linux with automatic AUR fallback.
 
-<div align = center><img src="https://github.com/resslr/aurc/assets/122219240/218741a8-0faa-4693-9fa8-feeb5285bfa9"><br><br>
+<div align="center">
 
-&ensp;[<kbd> <br> Usage <br> </kbd>](#Usage)&ensp;
-&ensp;[<kbd> <br> Installation <br> </kbd>](#Installation)&ensp;
-&ensp;[<kbd> <br> Manual Installation <br> </kbd>](#manual-installation)&ensp;
-&ensp;[<kbd> <br> Updating <br> </kbd>](#Updating)&ensp;
-&ensp;[<kbd> <br> Meme <br> </kbd>](#Meme)&ensp;
-&ensp;[<kbd> <br> Contributors <br> </kbd>](#Contributors)&ensp;
-<br><br><br><br></div>
-## TODO
+<img src="https://github.com/resslr/aurc/assets/122219240/218741a8-0faa-4693-9fa8-feeb5285bfa9" width="600"><br><br>
 
-- [x] Complete the Essential Pacman Functions
-- [x] Ability to Modify Arch Mirrorlist
-- [x] Implement AUR Helper
-- [x] Better Inspection and Secure AUR Package Installation
-- [x] Better Optimization
-- [x] Implement Better Command Handling
+&ensp;[<kbd> <br> Install <br> </kbd>](#installation)&ensp;
+&ensp;[<kbd> <br> Usage <br> </kbd>](#usage)&ensp;
+&ensp;[<kbd> <br> Commands <br> </kbd>](#commands)&ensp;
+&ensp;[<kbd> <br> Building <br> </kbd>](#building-from-source)&ensp;
+
+<br><br>
+</div>
+
+## Features
+
+- Wraps `pacman` for official repo packages
+- Full AUR support — download, inspect PKGBUILD, build with `makepkg`
+- **Smart install** — `aurc install <pkg>` checks official repos first, falls back to AUR automatically
+- PKGBUILD review prompt before every AUR installation
+- Configure your preferred editor for mirrorlist editing
 
 ## Requirements
-* Arch Linux
-* A Text Editor Set in $EDITOR Path
 
-* Dependencies -
-  
-   - less
-   - pacman
-   - curl
-   - base-devel
-   - make
-   - gcc
-   - git
-   - tar
-   - sudo
-   - json-c
+**Platform:** Arch Linux
 
-## Usage
+**Runtime dependencies:**
 
-  * Actions :
-    - update        - ( Update outdated system/user packages )
-    - refresh       - ( Refresh Repository Database )
-    - github        - ( Opens GitHub )
-    - install       - ( Install a package )
-    - install-local - ( Install a local package )
-    - install-aur   - ( Install aur package )
-    - install-force - ( Forcefully install a package )
-    - modify-repo   - ( Modify arch repositories )
-    - query         - ( Query if a package is installed )
-    - search        - ( Search for a package in the base repository )
-    - search-aur    - ( Search for a package in the aur repository )
-    - remove        - ( Remove a package )
-    - remove-dep    - ( Remove a package along with its dependencies )
-    - remove-force  - ( Forcefully remove a package even if other packages depend on it )
-    - remove-orp    - ( Remove orphan packages )
-    
-  * Options :
-    - --version, -v - ( Display the version of the package manager )
-    - --help,    -h - ( Display this help guide )
-## Installation 
- * This methods uses the AUR
-   ```bash
-   yay -S aurc
-   ```
-   * This method is encouraged for those that do not want to manually update
+| Dependency | Purpose |
+|---|---|
+| `pacman` | Official repo operations |
+| `sudo` | Privilege escalation |
+| `base-devel` | `makepkg` for building AUR packages |
+| `git` | Cloning repos |
+| `curl` | AUR HTTP requests |
+| `json-c` | AUR API response parsing |
+| `less` | PKGBUILD viewer |
 
-## Manual Installation
-> [!CAUTION]
-> Make sure you are in the SRC Directory
-  * Install dependencies : 
+**Build dependencies:** `gcc`, `make`, `libarchive`
 
-      ```bash
-      sudo pacman -S less gcc pacman make base-devel git sudo tar curl json-c
-      ```
+## Installation
 
-  * Method 1 :
+**Via AUR** (recommended — updates automatically):
 
-      ```bash
-      git clone https://github.com/resslr/aurc.git
-      ```
-      ```bash
-      cd aurc/src
-      ```
-      ```bash
-      sudo make install
-      ```
+```bash
+yay -S aurc
+```
 
-   * Method 2 :
+**Via PKGBUILD:**
 
-      ```bash
-      curl https://github.com/resslr/aurc/releases/latest/download/aurc-pkgbuild.tar.gz -o aurc-pkgbuild.tar.gz
-      ```
-      ```bash
-      tar xvzf aurc-pkgbuild.tar.gz
-      ```
-      ```bash
-      cd aurc-pkgbuild
-      ```
-      ```bash
-      makepkg -si
-      ```
-   
-   * Method 3 :
+```bash
+curl -L https://github.com/resslr/aurc/releases/latest/download/aurc-pkgbuild.tar.gz -o aurc-pkgbuild.tar.gz
+tar xzf aurc-pkgbuild.tar.gz && cd aurc-pkgbuild
+makepkg -si
+```
 
-      ```bash
-      wget https://github.com/resslr/aurc/releases/latest/download/aurc-${version}-x86_64.pkg.tar.zst
-      ```
-      
-      or download the file from <a href="https://github.com/statulr/aurc/releases/latest/">Github Releases</a></h1>
+**Via pre-built binary:**
 
-      ```bash
-      sudo pacman -U aurc-${version}-x86_64.pkg.tar.zst
-      ```
+```bash
+# Replace ${version} with the release tag, e.g. 1.2.3
+wget https://github.com/resslr/aurc/releases/latest/download/aurc-${version}-x86_64.pkg.tar.zst
+sudo pacman -U aurc-${version}-x86_64.pkg.tar.zst
+```
+
+## Building from Source
+
+Install build dependencies:
+
+```bash
+sudo pacman -S gcc make base-devel curl json-c libarchive
+```
+
+Clone and build:
+
+```bash
+git clone https://github.com/resslr/aurc.git
+cd aurc/src
+sudo make install
+```
 
 ## Updating
-> [!CAUTION]
-> Make sure you are in the SRC Directory
-   ```bash
-   git fetch & git pull
-   ```
-   Then
-   ```bash
-   sudo rm -rd build && sudo make clean install
-   ```
-### Updating via AUR
+
+**Via AUR:**
+
 ```bash
 yay
-```
-or
-```bash
+# or
 aurc update && aurc install-aur aurc
 ```
 
-## Meme
-[![meme](https://media.discordapp.net/attachments/1067268771238129724/1176522320878248036/image.png?ex=656f2ccc&is=655cb7cc&hm=f013e5fb79a07d61671a95b4b7c0b8befb96e5fb8f1141e07f8c08c21b68a600&=&width=438&height=443)](https://www.youtube.com/watch?v=jyARhOtwHUc)
+**From source:**
 
-# Contributors
-[@xslendix](https://github.com/xslendix)
-<br>
-[@rifsxd](https://github.com/rifsxd)
-<br>
-[@umutsevdi ](https://github.com/mutsvedi)
-<br>
-[@braddotcoffee ](https://github.com/braddotcoffee)
-<br>
-[@Hamza12700](https://github.com/Hamza12700)
-#### If you are opening a pull request add your name here so that if it gets accepted you can automatically be added
+```bash
+git pull
+cd src && sudo make clean install
+```
+
+## Usage
+
+```
+aurc <command> [package(s)]
+```
+
+### Commands
+
+**Installation**
+
+| Command | Description |
+|---|---|
+| `install <pkg...>` | Install packages — checks official repos first, falls back to AUR automatically |
+| `install-aur <pkg...>` | Install AUR packages directly |
+| `install-local <path>` | Install a local `.pkg.tar.zst` file |
+| `install-force <pkg...>` | Force install, skipping dependency checks |
+
+**Removal**
+
+| Command | Description |
+|---|---|
+| `remove <pkg...>` | Remove packages |
+| `remove-dep <pkg...>` | Remove packages and their dependencies |
+| `remove-force <pkg...>` | Force remove, even if other packages depend on it |
+| `remove-force-dep <pkg...>` | Force remove with dependencies |
+| `remove-orp` | Remove orphaned packages |
+
+**Search & Query**
+
+| Command | Description |
+|---|---|
+| `search <query>` | Search official repositories |
+| `search-aur <query>` | Search the AUR |
+| `query <pkg>` | Check if a package is installed |
+
+**System**
+
+| Command | Description |
+|---|---|
+| `update` | Update all system packages (`pacman -Syyu`) |
+| `refresh` | Refresh repository databases |
+| `modify-repo` | Edit `/etc/pacman.d/mirrorlist` in your configured editor |
+| `clear-aur-cache` | Clear the AUR build cache (`~/.cache/aurc/`) |
+| `config -e <editor>` | Set the default editor for `modify-repo` |
+
+**Options**
+
+| Flag | Description |
+|---|---|
+| `-h`, `--help` | Show help |
+| `-v`, `--version` | Show version |
+
+### Example
+
+```bash
+# Smart install — finds in repos, or falls back to AUR
+aurc install neovim yay-bin
+
+# Inspect and install an AUR package manually
+aurc install-aur paru-bin
+
+# Search AUR
+aurc search-aur spotify
+
+# Remove multiple packages
+aurc remove firefox thunderbird
+```
