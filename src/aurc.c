@@ -56,7 +56,7 @@ signed int main(unsigned int argc, char *argv[])
     {
         printf("\n");
         printf("Aurc Package Manager Version %s\n", VERSION);
-        printf("Copyright (C) 2023 Statulr\n");
+        printf("Copyright (C) 2023-2026 Resslr\n");
         printf("\n");
         printf("This program may be freely redistributed under\n");
         printf("the terms of the GNU General Public License.\n");
@@ -121,7 +121,7 @@ signed int main(unsigned int argc, char *argv[])
     {
         printf("Opening GitHub...\n");
         char sanitizedCommand[MAX_INPUT_SIZE];
-        snprintf(sanitizedCommand, sizeof(sanitizedCommand), "xdg-open %s >/dev/null 2>&1", "https://github.com/statulr/aurc");
+        snprintf(sanitizedCommand, sizeof(sanitizedCommand), "xdg-open %s >/dev/null 2>&1", "https://github.com/resslr/aurc");
         int result = system(sanitizedCommand);
         if (result == 0)
         {

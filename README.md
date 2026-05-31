@@ -4,7 +4,7 @@ Fast Easy way to Install and Update Aur and Non-Aur Arch Linux Packages!
 - This project is now under the wavly org as a rewritten project
 EMAIL ON THE AUR PKGBUILD IS EXPIRED; MESSAGE ME ONLY BY MY PROFILE LINKS ANYONE ELSE IS AN IMPERSONATOR
 
-<div align = center><img src="https://github.com/statulr/aurc/assets/122219240/218741a8-0faa-4693-9fa8-feeb5285bfa9"><br><br>
+<div align = center><img src="https://github.com/resslr/aurc/assets/122219240/218741a8-0faa-4693-9fa8-feeb5285bfa9"><br><br>
 
 &ensp;[<kbd> <br> Usage <br> </kbd>](#Usage)&ensp;
 &ensp;[<kbd> <br> Installation <br> </kbd>](#Installation)&ensp;
@@ -80,7 +80,7 @@ EMAIL ON THE AUR PKGBUILD IS EXPIRED; MESSAGE ME ONLY BY MY PROFILE LINKS ANYONE
   * Method 1 :
 
       ```bash
-      git clone https://github.com/statulr/aurc.git
+      git clone https://github.com/resslr/aurc.git
       ```
       ```bash
       cd aurc/src
@@ -92,7 +92,7 @@ EMAIL ON THE AUR PKGBUILD IS EXPIRED; MESSAGE ME ONLY BY MY PROFILE LINKS ANYONE
    * Method 2 :
 
       ```bash
-      curl https://github.com/statulr/aurc/releases/latest/download/aurc-pkgbuild.tar.gz -o aurc-pkgbuild.tar.gz
+      curl https://github.com/resslr/aurc/releases/latest/download/aurc-pkgbuild.tar.gz -o aurc-pkgbuild.tar.gz
       ```
       ```bash
       tar xvzf aurc-pkgbuild.tar.gz
@@ -107,7 +107,7 @@ EMAIL ON THE AUR PKGBUILD IS EXPIRED; MESSAGE ME ONLY BY MY PROFILE LINKS ANYONE
    * Method 3 :
 
       ```bash
-      wget https://github.com/statulr/aurc/releases/latest/download/aurc-${version}-x86_64.pkg.tar.zst
+      wget https://github.com/resslr/aurc/releases/latest/download/aurc-${version}-x86_64.pkg.tar.zst
       ```
       
       or download the file from <a href="https://github.com/statulr/aurc/releases/latest/">Github Releases</a></h1>
