@@ -41,7 +41,7 @@ signed int main(unsigned int argc, char *argv[])
         printf("  " YELLOW "modify-repo" RESET "      Modify arch repositories\n");
         printf("  " YELLOW "query" RESET "            Query if a package is installed\n");
         printf("  " YELLOW "search" RESET "           Search for a package in the base repository\n");
-        printf("  " YELLOW "search-aur" RESET "       Search for a package in the aur repository\n");
+        printf("  " YELLOW "search-aur [-s]" RESET "   Search AUR by relevance with interactive filter (-s for exact match only)\n");
         printf("  " RED "remove" RESET "           Remove packages\n");
         printf("  " RED "remove-dep" RESET "       Remove packages along with its dependencies\n");
         printf("  " RED "remove-force" RESET "     Forcefully remove packages even if other packages depend on it\n");
@@ -139,11 +139,15 @@ signed int main(unsigned int argc, char *argv[])
     {
         if (argc == 3)
         {
-            searchAurPackage(argv[2]);
+            searchAurPackage(argv[2], 0);
+        }
+        else if (argc == 4 && strcmp(argv[2], "-s") == 0)
+        {
+            searchAurPackage(argv[3], 1);
         }
         else
         {
-            fprintf(stderr, RED "Usage: %s search-aur <package_name>\n" RESET, argv[0]);
+            fprintf(stderr, RED "Usage: %s search-aur [-s] <package_name>\n" RESET, argv[0]);
             return 1;
         }
     }

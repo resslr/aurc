@@ -230,18 +230,68 @@ void installAurPackages(char **packageNames, unsigned int numPackages)
     curl_global_cleanup();
 }
 
-void queryAurRepo(const char *packageName, const char *message)
+/* ── AUR search ─────────────────────────────────────────────────────────── */
+
+typedef struct
+{
+    char *name;
+    char *version;
+    char *description;
+    int numVotes;
+    double popularity;
+    int score;
+} AurPackage;
+
+static int scorePackage(const AurPackage *pkg, const char *query)
+{
+    int score = 0;
+    if (strcmp(pkg->name, query) == 0)
+        score += 1000;
+    else if (strncasecmp(pkg->name, query, strlen(query)) == 0)
+        score += 100;
+    score += (int)(pkg->popularity * 10.0);
+    score += pkg->numVotes / 10;
+    return score;
+}
+
+static int comparePackages(const void *a, const void *b)
+{
+    return ((const AurPackage *)b)->score - ((const AurPackage *)a)->score;
+}
+
+static int displayPackages(const AurPackage *pkgs, int count, const char *filter)
+{
+    int shown = 0;
+    for (int i = 0; i < count; i++)
+    {
+        if (filter && filter[0] != '\0' &&
+            !strstr(pkgs[i].name, filter) &&
+            !(pkgs[i].description && strstr(pkgs[i].description, filter)))
+            continue;
+        printf(GREEN "aur/%s" RESET " %s\n    %s\n",
+               pkgs[i].name, pkgs[i].version, pkgs[i].description);
+        shown++;
+    }
+    return shown;
+}
+
+static void freePackages(AurPackage *pkgs, int count)
+{
+    for (int i = 0; i < count; i++)
+    {
+        free(pkgs[i].name);
+        free(pkgs[i].version);
+        free(pkgs[i].description);
+    }
+    free(pkgs);
+}
+
+void searchAurPackage(const char *query, int specific)
 {
     char url[500];
-    int ret = snprintf(url, sizeof(url), "https://aur.archlinux.org/rpc/?v=5&type=search&arg=%s", packageName);
-    if (ret < 0 || ret >= (int)sizeof(url))
-    {
-        fprintf(stderr, RED "URL too long.\n" RESET);
-        return;
-    }
+    snprintf(url, sizeof(url), "https://aur.archlinux.org/rpc/?v=5&type=search&arg=%s", query);
 
     CurlBuffer buf = {NULL, 0};
-
     curl_global_init(CURL_GLOBAL_DEFAULT);
     CURL *curl = curl_easy_init();
     if (curl)
@@ -251,10 +301,9 @@ void queryAurRepo(const char *packageName, const char *message)
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buf);
         CURLcode res = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
-
         if (res != CURLE_OK)
         {
-            fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+            fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(res));
             free(buf.data);
             curl_global_cleanup();
             return;
@@ -277,51 +326,96 @@ void queryAurRepo(const char *packageName, const char *message)
         return;
     }
 
-    struct json_object *results;
-    if (!json_object_object_get_ex(parsed, "results", &results))
+    struct json_object *results_obj;
+    if (!json_object_object_get_ex(parsed, "results", &results_obj) ||
+        json_object_array_length(results_obj) == 0)
     {
-        printf(YELLOW "No AUR packages found for '%s'.\n" RESET, packageName);
+        printf(YELLOW "No AUR packages found for '%s'.\n" RESET, query);
         json_object_put(parsed);
         return;
     }
 
-    int count = json_object_array_length(results);
-    if (count == 0)
+    int total = json_object_array_length(results_obj);
+    AurPackage *pkgs = calloc(total, sizeof(AurPackage));
+    if (!pkgs)
     {
-        printf(YELLOW "No AUR packages found for '%s'.\n" RESET, packageName);
         json_object_put(parsed);
         return;
     }
 
-    printf(GREEN "%s '%s'" RESET " (%d result%s):\n\n", message, packageName, count, count == 1 ? "" : "s");
-
-    for (int i = 0; i < count; i++)
+    int count = 0;
+    for (int i = 0; i < total; i++)
     {
-        struct json_object *pkg = json_object_array_get_idx(results, i);
-        struct json_object *name_obj, *desc_obj, *ver_obj;
+        struct json_object *pkg = json_object_array_get_idx(results_obj, i);
+        struct json_object *o;
 
-        json_object_object_get_ex(pkg, "Name", &name_obj);
-        json_object_object_get_ex(pkg, "Description", &desc_obj);
-        json_object_object_get_ex(pkg, "Version", &ver_obj);
+        json_object_object_get_ex(pkg, "Name", &o);
+        const char *name = o ? json_object_get_string(o) : NULL;
+        if (!name)
+            continue;
 
-        const char *name = name_obj ? json_object_get_string(name_obj) : "unknown";
-        const char *desc = desc_obj ? json_object_get_string(desc_obj) : "No description";
-        const char *ver = ver_obj ? json_object_get_string(ver_obj) : "unknown";
+        pkgs[count].name = strdup(name);
 
-        printf(GREEN "aur/%s" RESET " %s\n    %s\n", name, ver, desc);
+        json_object_object_get_ex(pkg, "Version", &o);
+        pkgs[count].version = strdup(o ? json_object_get_string(o) : "unknown");
+
+        json_object_object_get_ex(pkg, "Description", &o);
+        const char *desc = (o && json_object_get_string(o)) ? json_object_get_string(o) : "No description";
+        pkgs[count].description = strdup(desc);
+
+        json_object_object_get_ex(pkg, "NumVotes", &o);
+        pkgs[count].numVotes = o ? json_object_get_int(o) : 0;
+
+        json_object_object_get_ex(pkg, "Popularity", &o);
+        pkgs[count].popularity = o ? json_object_get_double(o) : 0.0;
+
+        pkgs[count].score = scorePackage(&pkgs[count], query);
+        count++;
     }
 
     json_object_put(parsed);
-}
+    qsort(pkgs, count, sizeof(AurPackage), comparePackages);
 
-void searchAurPackage(char *packageName)
-{
-    queryAurRepo(packageName, "Search results for");
-}
+    if (specific)
+    {
+        int found = 0;
+        for (int i = 0; i < count; i++)
+        {
+            if (strcmp(pkgs[i].name, query) == 0)
+            {
+                printf(GREEN "aur/%s" RESET " %s\n    %s\n",
+                       pkgs[i].name, pkgs[i].version, pkgs[i].description);
+                found = 1;
+                break;
+            }
+        }
+        if (!found)
+            printf(YELLOW "No AUR package named exactly '%s'.\n" RESET, query);
+    }
+    else
+    {
+        printf(GREEN "Search results for '%s'" RESET " (%d result%s, sorted by relevance):\n\n",
+               query, count, count == 1 ? "" : "s");
+        displayPackages(pkgs, count, NULL);
 
-void existingPackage(const char *packageName)
-{
-    queryAurRepo(packageName, "Available & similar packages for");
+        char filter[128];
+        while (1)
+        {
+            printf("\n" YELLOW "Filter (empty to exit): " RESET);
+            fflush(stdout);
+            if (!fgets(filter, sizeof(filter), stdin))
+                break;
+            drainStdin(filter);
+            filter[strcspn(filter, "\n")] = '\0';
+            if (filter[0] == '\0')
+                break;
+            printf("\n");
+            if (displayPackages(pkgs, count, filter) == 0)
+                printf(YELLOW "No results match '%s'.\n" RESET, filter);
+        }
+    }
+
+    freePackages(pkgs, count);
 }
 
 void displayPkgBuild(const char *packageName, const char *downloadDir)

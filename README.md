@@ -109,7 +109,8 @@ aurc <command> [package(s)]
 | Command | Description |
 |---|---|
 | `search <query>` | Search official repositories |
-| `search-aur <query>` | Search the AUR, sorted by relevance with interactive filter |
+| `search-aur <query>` | Search AUR — results sorted by relevance, interactive filter prompt after results |
+| `search-aur -s <name>` | Show only the exact package name match |
 | `query <pkg>` | Check if a package is installed |
 
 **System**
