@@ -233,3 +233,58 @@ void modifyRepo()
 
     executeCommandWithUserShell(command);
 }
+
+void selfUpdate()
+{
+    char tmpDir[] = "/tmp/aurc-update-XXXXXX";
+    char rmCmd[128];
+    char installCmd[256];
+    int status;
+    pid_t pid;
+
+    if (!mkdtemp(tmpDir))
+    {
+        perror("mkdtemp");
+        return;
+    }
+
+    printf("Fetching latest aurc...\n");
+
+    pid = fork();
+    if (pid == -1) { perror("fork"); goto cleanup; }
+    if (pid == 0)
+    {
+        execlp("git", "git", "clone", "--depth=1",
+               "https://github.com/resslr/aurc.git", tmpDir, NULL);
+        _exit(1);
+    }
+    waitpid(pid, &status, 0);
+
+    if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+    {
+        fprintf(stderr, RED "Failed to fetch latest aurc.\n" RESET);
+        goto cleanup;
+    }
+
+    printf("Building and installing...\n");
+
+    snprintf(installCmd, sizeof(installCmd), "cd %s/src && sudo make install", tmpDir);
+
+    pid = fork();
+    if (pid == -1) { perror("fork"); goto cleanup; }
+    if (pid == 0)
+    {
+        execlp("sh", "sh", "-c", installCmd, NULL);
+        _exit(1);
+    }
+    waitpid(pid, &status, 0);
+
+    if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+        printf(GREEN "aurc updated successfully.\n" RESET);
+    else
+        fprintf(stderr, RED "Build or install failed.\n" RESET);
+
+cleanup:
+    snprintf(rmCmd, sizeof(rmCmd), "rm -rf %s", tmpDir);
+    system(rmCmd);
+}

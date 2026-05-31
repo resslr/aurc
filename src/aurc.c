@@ -30,6 +30,7 @@ signed int main(unsigned int argc, char *argv[])
         printf("Usage: %s <action> [package_name]\n", argv[0]);
         printf("\nActions:\n");
         printf("  " GREEN "update" GREEN RESET "           Update outdated system/user packages\n");
+        printf("  " GREEN "self-update" RESET "      Update aurc itself to the latest version\n");
         printf("  " GREEN "refresh" GREEN RESET "          Refresh Repository Database\n");
         printf("  " GREEN "install" RESET "          Install packages\n");
         printf("  " GREEN "install-local" RESET "    Install a local package\n");
@@ -253,6 +254,11 @@ signed int main(unsigned int argc, char *argv[])
     else if (strcmp(action, "clear-aur-cache") == 0)
     {
         clearAurBuildCache();
+        return 0;
+    }
+    else if (strcmp(action, "self-update") == 0)
+    {
+        selfUpdate();
         return 0;
     }
     else if (strcmp(action, "config") == 0)
