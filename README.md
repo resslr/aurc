@@ -145,6 +145,7 @@ aurc -Q git             # same as: aurc query git
 | `search <query>` | Search official repositories |
 | `search-aur <query>` | Search AUR — results sorted by relevance, interactive filter prompt after results |
 | `search-aur -s <name>` | Show only the exact package name match |
+| `list-aur <query>` | List all installed AUR packages, optionally filtered by name |
 | `query <pkg>` | Check if a package is installed |
 
 **System**

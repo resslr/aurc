@@ -332,6 +332,59 @@ void searchPackage(const char *query)
     alpm_release(handle);
 }
 
+void listAurPackages(const char *query)
+{
+    alpm_errno_t err;
+    alpm_handle_t *handle = alpm_initialize("/", "/var/lib/pacman", &err);
+    if (!handle) { fprintf(stderr, RED "Failed to init: %s\n" RESET, alpm_strerror(err)); return; }
+
+    DIR *dir = opendir("/var/lib/pacman/sync");
+    if (dir)
+    {
+        struct dirent *entry;
+        while ((entry = readdir(dir)) != NULL)
+        {
+            size_t len = strlen(entry->d_name);
+            if (len > 3 && strcmp(entry->d_name + len - 3, ".db") == 0)
+            {
+                char name[256];
+                snprintf(name, sizeof(name), "%.*s", (int)(len - 3), entry->d_name);
+                alpm_register_syncdb(handle, name, ALPM_SIG_USE_DEFAULT);
+            }
+        }
+        closedir(dir);
+    }
+
+    alpm_list_t *syncdbs = alpm_get_syncdbs(handle);
+    alpm_db_t *localdb = alpm_get_localdb(handle);
+    alpm_list_t *pkgs = alpm_db_get_pkgcache(localdb);
+
+    int found = 0;
+    for (alpm_list_t *i = pkgs; i; i = alpm_list_next(i))
+    {
+        alpm_pkg_t *pkg = i->data;
+        const char *pname = alpm_pkg_get_name(pkg);
+        if (alpm_find_dbs_satisfier(handle, syncdbs, pname)) continue;
+
+        if (query && query[0] != '\0')
+        {
+            if (!strstr(pname, query)) continue;
+        }
+
+        printf(GREEN "aur/%s" RESET " %s\n", pname, alpm_pkg_get_version(pkg));
+        found++;
+    }
+
+    if (!found)
+    {
+        if (query && query[0] != '\0')
+            printf(YELLOW "No AUR packages match '%s'.\n" RESET, query);
+        else
+            printf(YELLOW "No AUR packages installed.\n" RESET);
+    }
+    alpm_release(handle);
+}
+
 /* ── write operations (require root) ────────────────────────────────────── */
 
 void installPackages(int argc, char *argv[])

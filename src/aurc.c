@@ -44,6 +44,7 @@ int main(int argc, char *argv[])
         printf(YELLOW "  %-30s" RESET " %s\n", "query",          "-Q");
         printf(YELLOW "  %-30s" RESET " %s\n", "search",         "-Ss");
         printf(YELLOW "  %-30s" RESET " %s\n", "search-aur [-s]","-Ssa");
+        printf(YELLOW "  %-30s" RESET " %s\n", "list-aur <query>","");
         printf(YELLOW "  %-30s" RESET " %s\n", "clear-aur-cache","-C");
         printf(RED    "  %-30s" RESET " %s\n", "remove",         "-R");
         printf(RED    "  %-30s" RESET " %s\n", "remove-dep",     "-Rs");
@@ -175,6 +176,23 @@ int main(int argc, char *argv[])
             fprintf(stderr, RED "Usage: %s search-aur [-s] <package_name>\n" RESET, argv[0]);
             return 1;
         }
+    }
+    else if (strcmp(action, "list-aur") == 0)
+    {
+        if (argc == 2)
+        {
+            listAurPackages(NULL);
+        }
+        else if (argc == 3)
+        {
+            listAurPackages(argv[2]);
+        }
+        else
+        {
+            fprintf(stderr, RED "Usage: %s list-aur [query]\n" RESET, argv[0]);
+            return 1;
+        }
+        return 0;
     }
     else if (strcmp(action, "install-force") == 0)
     {
