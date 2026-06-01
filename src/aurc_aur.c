@@ -174,11 +174,15 @@ void installAurPackages(char **packageNames, unsigned int numPackages)
 
         char extractCommand[600];
         snprintf(extractCommand, sizeof(extractCommand), "tar -xzf %s -C %s", tarPath, downloadDir);
-        system(extractCommand);
+        if (system(extractCommand) != 0)
+        {
+            fprintf(stderr, RED "Failed to extract '%s'.\n" RESET, packageName);
+            continue;
+        }
 
         char userInput[16];
         printf("View PKGBUILD for '%s' before installation? (Recommended) (y/n): ", packageName);
-        fgets(userInput, sizeof(userInput), stdin);
+        if (!fgets(userInput, sizeof(userInput), stdin)) userInput[0] = 'n';
         drainStdin(userInput);
         if (userInput[0] == '\n')
             userInput[0] = 'y';
@@ -188,7 +192,7 @@ void installAurPackages(char **packageNames, unsigned int numPackages)
             displayPkgBuild(packageName, downloadDir);
 
             printf("Continue with installation of '%s'? (y/n): ", packageName);
-            fgets(userInput, sizeof(userInput), stdin);
+            if (!fgets(userInput, sizeof(userInput), stdin)) userInput[0] = 'n';
             drainStdin(userInput);
             if (userInput[0] == '\n')
                 userInput[0] = 'y';
@@ -198,7 +202,7 @@ void installAurPackages(char **packageNames, unsigned int numPackages)
                 fprintf(stderr, "Installation of '%s' aborted.\n", packageName);
                 char cleanupCommand[600];
                 snprintf(cleanupCommand, sizeof(cleanupCommand), "rm -rf %s%s %s", downloadDir, packageName, tarPath);
-                system(cleanupCommand);
+                (void)system(cleanupCommand);
                 continue;
             }
         }
@@ -447,7 +451,8 @@ static int vercmpResult(const char *v1, const char *v2)
     close(pipefd[1]);
 
     char buf[32] = {0};
-    read(pipefd[0], buf, sizeof(buf) - 1);
+    ssize_t n = read(pipefd[0], buf, sizeof(buf) - 1);
+    if (n > 0) buf[n] = '\0';
     close(pipefd[0]);
 
     int status;
@@ -636,7 +641,7 @@ void displayPkgBuild(const char *packageName, const char *downloadDir)
 {
     char displayCommand[600];
     snprintf(displayCommand, sizeof(displayCommand), "less %s%s/PKGBUILD", downloadDir, packageName);
-    system(displayCommand);
+    (void)system(displayCommand);
 }
 
 void clearAurBuildCache()
@@ -651,6 +656,6 @@ void clearAurBuildCache()
     char cleanupCommand[512];
     snprintf(cleanupCommand, sizeof(cleanupCommand), "rm -rf %s/.cache/aurc/*", home);
     printf(YELLOW "Clearing AUR build cache...\n" RESET);
-    system(cleanupCommand);
+    (void)system(cleanupCommand);
     printf(GREEN "Done.\n" RESET);
 }

@@ -21,7 +21,7 @@ void sanitizeInput(const char *input, char *output, size_t size)
     output[size - 1] = '\0';
 }
 
-signed int main(unsigned int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     // Check for help flag
     if (argc == 2 && getCommandType(argv[1]) == CMD_HELP)

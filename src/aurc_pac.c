@@ -196,7 +196,7 @@ static void onQuestion(void *ctx, alpm_question_t *q)
                alpm_pkg_get_name(qr->oldpkg),
                alpm_db_get_name(qr->newdb),
                alpm_pkg_get_name(qr->newpkg));
-        char buf[8]; fgets(buf, sizeof(buf), stdin);
+        char buf[8] = {'n'}; if (!fgets(buf, sizeof(buf), stdin)) buf[0] = 'n';
         qr->replace = (tolower(buf[0]) == 'y');
         break;
     }
@@ -207,7 +207,7 @@ static void onQuestion(void *ctx, alpm_question_t *q)
                alpm_pkg_get_name(qc->conflict->package1),
                alpm_pkg_get_name(qc->conflict->package2),
                alpm_pkg_get_name(qc->conflict->package2));
-        char buf[8]; fgets(buf, sizeof(buf), stdin);
+        char buf[8] = {'n'}; if (!fgets(buf, sizeof(buf), stdin)) buf[0] = 'n';
         qc->remove = (tolower(buf[0]) == 'y');
         break;
     }
@@ -268,8 +268,8 @@ static int confirmTransaction(alpm_handle_t *handle, const char *verb)
     }
 
     printf("\nProceed? (y/n): ");
-    char buf[16];
-    fgets(buf, sizeof(buf), stdin);
+    char buf[16] = {'n'};
+    if (!fgets(buf, sizeof(buf), stdin)) buf[0] = 'n';
     if (!strchr(buf, '\n')) { int c; while ((c = getchar()) != '\n' && c != EOF); }
     return tolower(buf[0]) == 'y';
 }
@@ -414,7 +414,7 @@ void installPackages(int argc, char *argv[])
         char answer[16];
         printf("Install %d AUR package%s (%s) via makepkg? (y/n): ",
                aurCount, aurCount == 1 ? "" : "s", aurPkgs[0]);
-        fgets(answer, sizeof(answer), stdin);
+        if (!fgets(answer, sizeof(answer), stdin)) answer[0] = 'n';
         if (!strchr(answer, '\n')) { int c; while ((c = getchar()) != '\n' && c != EOF); }
         if (tolower(answer[0]) == 'y' || answer[0] == '\n')
             installAurPackages(aurPkgs, (unsigned int)aurCount);
@@ -636,5 +636,5 @@ void selfUpdate(void)
 
 cleanup:
     snprintf(rmCmd, sizeof(rmCmd), "rm -rf %s", tmpDir);
-    system(rmCmd);
+    (void)system(rmCmd);
 }
