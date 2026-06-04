@@ -160,28 +160,24 @@ static void onEvent(void *ctx, alpm_event_t *e)
     if (e->type == ALPM_EVENT_PACKAGE_OPERATION_START)
     {
         alpm_event_package_operation_t *pe = (void *)e;
+        const char *name = alpm_pkg_get_name(pe->newpkg ? pe->newpkg : pe->oldpkg);
+        const char *ver = alpm_pkg_get_version(pe->newpkg ? pe->newpkg : pe->oldpkg);
+
         switch (pe->operation)
         {
         case ALPM_PACKAGE_INSTALL:
-            printf(GREEN "installing" RESET " %s %s\n",
-                   alpm_pkg_get_name(pe->newpkg), alpm_pkg_get_version(pe->newpkg));
+            printf(GREEN "  ✓ installing %s %s\n" RESET, name, ver);
             break;
         case ALPM_PACKAGE_UPGRADE:
-            printf(YELLOW "upgrading" RESET " %s (%s -> %s)\n",
-                   alpm_pkg_get_name(pe->newpkg),
-                   alpm_pkg_get_version(pe->oldpkg),
-                   alpm_pkg_get_version(pe->newpkg));
+            printf(YELLOW "  ↑ upgrading  %s → %s\n" RESET, name, ver);
             break;
         case ALPM_PACKAGE_REMOVE:
-            printf(RED "removing" RESET " %s %s\n",
-                   alpm_pkg_get_name(pe->oldpkg), alpm_pkg_get_version(pe->oldpkg));
+            printf(RED "  ✗ removing   %s %s\n" RESET, name, ver);
             break;
         default:
             break;
         }
     }
-    else if (e->type == ALPM_EVENT_PACKAGE_OPERATION_DONE)
-        printf("\n");
 }
 
 static void onQuestion(void *ctx, alpm_question_t *q)
