@@ -230,6 +230,10 @@ void installAurPackages(char **packageNames, unsigned int numPackages)
             else
                 printf(GREEN "Installation of '%s' complete.\n" RESET, packageName);
         }
+
+        char cleanupCmd[700];
+        snprintf(cleanupCmd, sizeof(cleanupCmd), "rm -rf %s%s %s", downloadDir, packageName, tarPath);
+        (void)system(cleanupCmd);
     }
 
     regfree(&regex);
@@ -653,9 +657,24 @@ void clearAurBuildCache()
         return;
     }
 
-    char cleanupCommand[512];
-    snprintf(cleanupCommand, sizeof(cleanupCommand), "rm -rf %s/.cache/aurc/*", home);
-    printf(YELLOW "Clearing AUR build cache...\n" RESET);
+    char cacheDir[512];
+    snprintf(cacheDir, sizeof(cacheDir), "%s/.cache/aurc", home);
+
+    char sizeCmd[600];
+    snprintf(sizeCmd, sizeof(sizeCmd), "du -sh %s 2>/dev/null | cut -f1", cacheDir);
+    FILE *fp = popen(sizeCmd, "r");
+    char sizeBuf[32] = "0";
+    if (fp)
+    {
+        if (!fgets(sizeBuf, sizeof(sizeBuf), fp)) sizeBuf[0] = '\0';
+        pclose(fp);
+        size_t len = strlen(sizeBuf);
+        if (len > 0 && sizeBuf[len - 1] == '\n') sizeBuf[len - 1] = '\0';
+    }
+
+    char cleanupCommand[600];
+    snprintf(cleanupCommand, sizeof(cleanupCommand), "rm -rf %s/*", cacheDir);
+    printf(YELLOW "Clearing AUR build cache (%s)...\n" RESET, sizeBuf[0] ? sizeBuf : "0");
     (void)system(cleanupCommand);
-    printf(GREEN "Done.\n" RESET);
+    printf(GREEN "Cache cleared.\n" RESET);
 }
