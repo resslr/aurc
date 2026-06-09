@@ -594,9 +594,60 @@ void refreshRepo(void)
     alpm_release(handle);
 }
 
+static void checkAurcVersion(void)
+{
+    char url[] = "https://api.github.com/repos/resslr/aurc/releases/latest";
+    CurlBuffer buf = {NULL, 0};
+
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    CURL *curl = curl_easy_init();
+    if (!curl) { curl_global_cleanup(); return; }
+
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, growingWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buf);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "aurc");
+    CURLcode res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+    curl_global_cleanup();
+
+    if (res != CURLE_OK || !buf.data) { free(buf.data); return; }
+
+    struct json_object *parsed = json_tokener_parse(buf.data);
+    free(buf.data);
+    if (!parsed) return;
+
+    struct json_object *tag_obj;
+    if (!json_object_object_get_ex(parsed, "tag_name", &tag_obj))
+    {
+        json_object_put(parsed);
+        return;
+    }
+
+    const char *latest = json_object_get_string(tag_obj);
+    if (!latest) { json_object_put(parsed); return; }
+
+    int latestMajor = 0, latestMinor = 0, latestPatch = 0;
+    int currentMajor = 0, currentMinor = 0, currentPatch = 0;
+
+    sscanf(latest, "%d.%d.%d", &latestMajor, &latestMinor, &latestPatch);
+    sscanf(VERSION, "%d.%d.%d", &currentMajor, &currentMinor, &currentPatch);
+
+    json_object_put(parsed);
+
+    if (latestMajor > currentMajor ||
+        (latestMajor == currentMajor && latestMinor > currentMinor) ||
+        (latestMajor == currentMajor && latestMinor == currentMinor && latestPatch > currentPatch))
+    {
+        printf("\n" YELLOW "aurc %s is available (you have %s)\n" RESET, latest, VERSION);
+        printf("Run " GREEN "aurc self-update" RESET " to upgrade.\n");
+    }
+}
+
 void fullUpdate(char *selfPath)
 {
-    printf(GREEN "::" RESET " Updating system packages...\n\n");
+    checkAurcVersion();
+    printf("\n" GREEN "::" RESET " Updating system packages...\n\n");
     if (geteuid() != 0)
     {
         pid_t pid = fork();
