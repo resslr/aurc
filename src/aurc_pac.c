@@ -16,6 +16,7 @@
 int existingAurPackage(const char *packageName);
 void installAurPackages(char **packageNames, unsigned int numPackages);
 void upgradeAurPackages(void);
+void postInstallChecks(void);
 
 /* ── libalpm init ────────────────────────────────────────────────────────── */
 
@@ -468,6 +469,8 @@ void installPackages(int argc, char *argv[])
         if (tolower(answer[0]) == 'y' || answer[0] == '\n')
             installAurPackages(aurPkgs, (unsigned int)aurCount);
     }
+
+    postInstallChecks();
 }
 
 void installPackagesForce(int argc, char *argv[])
@@ -567,6 +570,83 @@ void removeOrphanPackages(void)
         return;
     }
     commitOrAbort(handle, "remove (orphans)");
+}
+
+void postInstallChecks(void)
+{
+    int any = 0;
+
+    /* 1. .pacnew / .pacsave files left by pacman */
+    FILE *fp = popen("find /etc -name '*.pacnew' -o -name '*.pacsave' 2>/dev/null", "r");
+    if (fp)
+    {
+        char line[512];
+        int count = 0;
+        while (fgets(line, sizeof(line), fp))
+        {
+            if (count == 0)
+            {
+                printf(YELLOW "\n:: Unmerged config files:\n" RESET);
+                any = 1;
+            }
+            line[strcspn(line, "\n")] = '\0';
+            printf("   %s\n", line);
+            count++;
+        }
+        pclose(fp);
+        if (count > 0)
+            printf(YELLOW "   Run 'sudo pacdiff' to merge them.\n" RESET);
+    }
+
+    /* 2. Orphaned packages */
+    alpm_handle_t *handle = alpmInit();
+    if (handle)
+    {
+        alpm_db_t *localdb = alpm_get_localdb(handle);
+        alpm_list_t *pkgs = alpm_db_get_pkgcache(localdb);
+        int orphans = 0;
+        for (alpm_list_t *i = pkgs; i; i = alpm_list_next(i))
+        {
+            alpm_pkg_t *pkg = i->data;
+            if (alpm_pkg_get_reason(pkg) != ALPM_PKG_REASON_DEPEND) continue;
+            alpm_list_t *req = alpm_pkg_compute_requiredby(pkg);
+            if (!req) orphans++;
+            alpm_list_free_inner(req, free);
+            alpm_list_free(req);
+        }
+        alpm_release(handle);
+        if (orphans > 0)
+        {
+            printf(YELLOW "\n:: %d orphaned package%s found."
+                   " Run 'aurc remove-orp' to clean up.\n" RESET,
+                   orphans, orphans == 1 ? "" : "s");
+            any = 1;
+        }
+    }
+
+    /* 3. Failed systemd units */
+    fp = popen("systemctl --failed --no-legend --no-pager 2>/dev/null", "r");
+    if (fp)
+    {
+        char line[512];
+        int count = 0;
+        while (fgets(line, sizeof(line), fp))
+        {
+            if (count == 0)
+            {
+                printf(RED "\n:: Failed systemd units:\n" RESET);
+                any = 1;
+            }
+            line[strcspn(line, "\n")] = '\0';
+            printf("   %s\n", line);
+            count++;
+        }
+        pclose(fp);
+        if (count > 0)
+            printf(RED "   Run 'systemctl --failed' for details.\n" RESET);
+    }
+
+    if (any) printf("\n");
 }
 
 void updateSystem(void)

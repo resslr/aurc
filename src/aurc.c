@@ -137,6 +137,7 @@ int main(int argc, char *argv[])
             int numPackages = argc - 2;
             char **packageNames = argv + 2;
             installAurPackages(packageNames, numPackages);
+            postInstallChecks();
         }
         else
         {
