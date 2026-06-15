@@ -16,6 +16,7 @@
 int existingAurPackage(const char *packageName);
 void installAurPackages(char **packageNames, unsigned int numPackages);
 void upgradeAurPackages(void);
+int warnAurOrphanedPackages(void);
 void postInstallChecks(void);
 
 /* ── libalpm init ────────────────────────────────────────────────────────── */
@@ -599,28 +600,70 @@ void postInstallChecks(void)
     }
 
     /* 2. Orphaned packages */
-    alpm_handle_t *handle = alpmInit();
-    if (handle)
     {
-        alpm_db_t *localdb = alpm_get_localdb(handle);
-        alpm_list_t *pkgs = alpm_db_get_pkgcache(localdb);
-        int orphans = 0;
-        for (alpm_list_t *i = pkgs; i; i = alpm_list_next(i))
+        alpm_handle_t *handle = alpmInit();
+        if (handle)
         {
-            alpm_pkg_t *pkg = i->data;
-            if (alpm_pkg_get_reason(pkg) != ALPM_PKG_REASON_DEPEND) continue;
-            alpm_list_t *req = alpm_pkg_compute_requiredby(pkg);
-            if (!req) orphans++;
-            alpm_list_free_inner(req, free);
-            alpm_list_free(req);
-        }
-        alpm_release(handle);
-        if (orphans > 0)
-        {
-            printf(YELLOW "\n:: %d orphaned package%s found."
-                   " Run 'aurc remove-orp' to clean up.\n" RESET,
-                   orphans, orphans == 1 ? "" : "s");
-            any = 1;
+            alpm_db_t *localdb = alpm_get_localdb(handle);
+            alpm_list_t *pkgs = alpm_db_get_pkgcache(localdb);
+            alpm_list_t *orphanNames = NULL;
+            int orphans = 0;
+            for (alpm_list_t *i = pkgs; i; i = alpm_list_next(i))
+            {
+                alpm_pkg_t *pkg = i->data;
+                if (alpm_pkg_get_reason(pkg) != ALPM_PKG_REASON_DEPEND) continue;
+                alpm_list_t *req = alpm_pkg_compute_requiredby(pkg);
+                if (!req)
+                {
+                    orphanNames = alpm_list_add(orphanNames,
+                                                strdup(alpm_pkg_get_name(pkg)));
+                    orphans++;
+                }
+                alpm_list_free_inner(req, free);
+                alpm_list_free(req);
+            }
+            alpm_release(handle);
+
+            if (orphans > 0)
+            {
+                printf(YELLOW "\n:: %d orphaned package%s found:\n" RESET,
+                       orphans, orphans == 1 ? "" : "s");
+                for (alpm_list_t *i = orphanNames; i; i = alpm_list_next(i))
+                    printf("   %s\n", (char *)i->data);
+
+                char ans[16];
+                printf(YELLOW "Remove orphaned packages now? (y/n): " RESET);
+                fflush(stdout);
+                if (!fgets(ans, sizeof(ans), stdin)) ans[0] = 'n';
+                if (!strchr(ans, '\n')) { int c; while ((c = getchar()) != '\n' && c != EOF); }
+
+                if (tolower(ans[0]) == 'y' || ans[0] == '\n')
+                {
+                    if (geteuid() == 0)
+                    {
+                        removeOrphanPackages();
+                    }
+                    else
+                    {
+                        char self[512];
+                        ssize_t len = readlink("/proc/self/exe", self, sizeof(self) - 1);
+                        if (len > 0)
+                        {
+                            self[len] = '\0';
+                            char *args[] = {"sudo", self, "remove-orp", NULL};
+                            pid_t pid = fork();
+                            if (pid == 0) { execvp("sudo", args); _exit(1); }
+                            if (pid > 0) { int st; waitpid(pid, &st, 0); }
+                        }
+                    }
+                }
+                else
+                    printf(YELLOW "   Run 'aurc remove-orp' to clean up later.\n" RESET);
+
+                any = 1;
+                alpm_list_free_inner(orphanNames, free);
+                alpm_list_free(orphanNames);
+            }
         }
     }
 
@@ -645,6 +688,9 @@ void postInstallChecks(void)
         if (count > 0)
             printf(RED "   Run 'systemctl --failed' for details.\n" RESET);
     }
+
+    if (warnAurOrphanedPackages() > 0)
+        any = 1;
 
     if (any) printf("\n");
 }
