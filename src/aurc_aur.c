@@ -641,6 +641,89 @@ void upgradeAurPackages()
     free(toUpdate);
 }
 
+int warnAurOrphanedPackages(void)
+{
+    int installedCount = 0;
+    InstalledPkg *installed = getForeignPackages(&installedCount);
+    if (installedCount == 0 || !installed)
+    {
+        free(installed);
+        return 0;
+    }
+
+    size_t urlCap = 64;
+    for (int i = 0; i < installedCount; i++)
+        urlCap += strlen(installed[i].name) + 8;
+
+    char *url = malloc(urlCap);
+    if (!url) { free(installed); return 0; }
+
+    int w = snprintf(url, urlCap, "https://aur.archlinux.org/rpc/?v=5&type=info");
+    for (int i = 0; i < installedCount; i++)
+        w += snprintf(url + w, urlCap - (size_t)w, "&arg[]=%s", installed[i].name);
+
+    CurlBuffer buf = {NULL, 0};
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    CURL *curl = curl_easy_init();
+    if (curl)
+    {
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, growingWriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buf);
+        CURLcode res = curl_easy_perform(curl);
+        curl_easy_cleanup(curl);
+        if (res != CURLE_OK)
+        {
+            free(buf.data);
+            free(url);
+            free(installed);
+            curl_global_cleanup();
+            return 0;
+        }
+    }
+    curl_global_cleanup();
+    free(url);
+
+    if (!buf.data) { free(installed); return 0; }
+
+    struct json_object *parsed = json_tokener_parse(buf.data);
+    free(buf.data);
+    if (!parsed) { free(installed); return 0; }
+
+    struct json_object *results_obj;
+    if (!json_object_object_get_ex(parsed, "results", &results_obj))
+    {
+        json_object_put(parsed);
+        free(installed);
+        return 0;
+    }
+
+    int resultCount = json_object_array_length(results_obj);
+    int orphanCount = 0;
+
+    for (int i = 0; i < resultCount; i++)
+    {
+        struct json_object *pkg = json_object_array_get_idx(results_obj, i);
+        struct json_object *name_obj, *maint_obj;
+
+        json_object_object_get_ex(pkg, "Name", &name_obj);
+        if (!name_obj) continue;
+
+        if (!json_object_object_get_ex(pkg, "Maintainer", &maint_obj) ||
+            (maint_obj && json_object_get_type(maint_obj) != json_type_null))
+            continue;
+
+        if (orphanCount == 0)
+            printf(YELLOW "\n:: Installed AUR packages with no maintainer (orphaned on AUR):\n" RESET);
+        printf("   %s\n", json_object_get_string(name_obj));
+        orphanCount++;
+    }
+
+    json_object_put(parsed);
+    free(installed);
+    return orphanCount;
+}
+
 void displayPkgBuild(const char *packageName, const char *downloadDir)
 {
     char displayCommand[600];
