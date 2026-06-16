@@ -43,24 +43,6 @@
 
 ## Installation
 
-**Via PKGBUILD** (recommended):
-
-```bash
-curl -L https://github.com/resslr/aurc/releases/latest/download/aurc-pkgbuild.tar.gz -o aurc-pkgbuild.tar.gz
-tar xzf aurc-pkgbuild.tar.gz && cd aurc-pkgbuild
-makepkg -si
-```
-
-**Via pre-built binary:**
-
-```bash
-# Replace ${version} with the release tag, e.g. 1.2.3
-wget https://github.com/resslr/aurc/releases/latest/download/aurc-${version}-x86_64.pkg.tar.zst
-sudo pacman -U aurc-${version}-x86_64.pkg.tar.zst
-```
-
-**From source:**
-
 ```bash
 sudo pacman -S gcc make base-devel curl json-c libarchive git
 git clone https://github.com/resslr/aurc.git
