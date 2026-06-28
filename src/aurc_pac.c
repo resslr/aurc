@@ -248,28 +248,43 @@ static int confirmTransaction(alpm_handle_t *handle, const char *verb)
 
     if (add)
     {
-        printf("\nPackages to %s (%d):\n", verb, (int)alpm_list_count(add));
-        for (alpm_list_t *i = add; i; i = alpm_list_next(i))
+        alpm_db_t *localdb = alpm_get_localdb(handle);
+        printf("\n" BOLD "Packages to %s" RESET " (%d):\n\n", verb, (int)alpm_list_count(add));
+        int idx = 1;
+        for (alpm_list_t *i = add; i; i = alpm_list_next(i), idx++)
         {
             alpm_pkg_t *pkg = i->data;
-            printf("  %s %s\n", alpm_pkg_get_name(pkg), alpm_pkg_get_version(pkg));
+            const char *name = alpm_pkg_get_name(pkg);
+            const char *newver = alpm_pkg_get_version(pkg);
+            alpm_db_t *db = alpm_pkg_get_db(pkg);
+            const char *repo = db ? alpm_db_get_name(db) : "local";
+            alpm_pkg_t *old = alpm_db_get_pkg(localdb, name);
+
+            if (old && strcmp(alpm_pkg_get_version(old), newver) != 0)
+                printf("  %2d  " BLUE "%s/" RESET BOLD "%-25s" RESET GRAY "%s" RESET " -> " GREEN "%s" RESET "\n",
+                       idx, repo, name, alpm_pkg_get_version(old), newver);
+            else
+                printf("  %2d  " BLUE "%s/" RESET BOLD "%-25s" RESET GREEN "%s" RESET "\n",
+                       idx, repo, name, newver);
         }
     }
     if (rem)
     {
-        printf("\nPackages to remove (%d):\n", (int)alpm_list_count(rem));
-        for (alpm_list_t *i = rem; i; i = alpm_list_next(i))
+        printf("\n" BOLD "Packages to remove" RESET " (%d):\n\n", (int)alpm_list_count(rem));
+        int idx = 1;
+        for (alpm_list_t *i = rem; i; i = alpm_list_next(i), idx++)
         {
             alpm_pkg_t *pkg = i->data;
-            printf("  %s %s\n", alpm_pkg_get_name(pkg), alpm_pkg_get_version(pkg));
+            printf("  %2d  " RED "%-25s" RESET GRAY "%s" RESET "\n",
+                   idx, alpm_pkg_get_name(pkg), alpm_pkg_get_version(pkg));
         }
     }
 
-    printf("\nProceed? (y/n): ");
+    printf("\n" CYAN BOLD "::" RESET BOLD " Proceed with %s? " RESET GRAY "[Y/n] " RESET, verb);
     char buf[16] = {'n'};
     if (!fgets(buf, sizeof(buf), stdin)) buf[0] = 'n';
     if (!strchr(buf, '\n')) { int c; while ((c = getchar()) != '\n' && c != EOF); }
-    return tolower(buf[0]) == 'y';
+    return tolower(buf[0]) == 'y' || buf[0] == '\n';
 }
 
 static void commitOrAbort(alpm_handle_t *handle, const char *verb)
@@ -699,7 +714,7 @@ void updateSystem(void)
 {
     alpm_handle_t *handle = alpmInitCallbacks();
     if (!handle) return;
-    printf("Syncing databases...\n");
+    printSection("Synchronizing package databases...");
     alpm_list_t *syncdbs = alpm_get_syncdbs(handle);
     alpm_db_update(handle, syncdbs, 0);
     alpm_trans_init(handle, 0);
@@ -711,7 +726,7 @@ void refreshRepo(void)
 {
     alpm_handle_t *handle = alpmInitCallbacks();
     if (!handle) return;
-    printf("Syncing package databases...\n");
+    printSection("Synchronizing package databases...");
     alpm_list_t *syncdbs = alpm_get_syncdbs(handle);
     if (alpm_db_update(handle, syncdbs, 0) >= 0)
         printf(GREEN "Databases synced.\n" RESET);
@@ -773,7 +788,8 @@ static void checkAurcVersion(void)
 void fullUpdate(char *selfPath)
 {
     checkAurcVersion();
-    printf("\n" GREEN "::" RESET " Updating system packages...\n\n");
+    printBox("aurc — full system update");
+    printSection("Updating system packages...");
     if (geteuid() != 0)
     {
         pid_t pid = fork();
@@ -782,8 +798,9 @@ void fullUpdate(char *selfPath)
     }
     else
         updateSystem();
-    printf("\n" GREEN "::" RESET " Checking AUR packages for updates...\n\n");
+    printSection("Checking AUR packages for updates...");
     upgradeAurPackages();
+    printf("\n" GREEN BOLD "Update complete" RESET "\n\n");
 }
 
 void modifyRepo(void)
@@ -821,7 +838,8 @@ void selfUpdate(void)
 
     if (!mkdtemp(tmpDir)) { perror("mkdtemp"); return; }
 
-    printf("Fetching latest aurc...\n");
+    printSection("Updating aurc...");
+    printf(CYAN "::" RESET " Fetching latest source...\n");
     pid = fork();
     if (pid == -1) { perror("fork"); goto cleanup; }
     if (pid == 0)
@@ -837,7 +855,7 @@ void selfUpdate(void)
         goto cleanup;
     }
 
-    printf("Building...\n");
+    printf(CYAN "::" RESET " Building...\n");
     snprintf(buildCmd, sizeof(buildCmd), "cd %s/src && make build", tmpDir);
     pid = fork();
     if (pid == -1) { perror("fork"); goto cleanup; }
@@ -849,14 +867,14 @@ void selfUpdate(void)
         goto cleanup;
     }
 
-    printf("Installing...\n");
+    printf(CYAN "::" RESET " Installing...\n");
     snprintf(installCmd, sizeof(installCmd), "cd %s/src && sudo make install", tmpDir);
     pid = fork();
     if (pid == -1) { perror("fork"); goto cleanup; }
     if (pid == 0) { execlp("sh", "sh", "-c", installCmd, NULL); _exit(1); }
     waitpid(pid, &status, 0);
     if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
-        printf(GREEN "aurc updated successfully.\n" RESET);
+        printf("\n" GREEN BOLD "✓ aurc updated successfully." RESET "\n\n");
     else
         fprintf(stderr, RED "Install failed.\n" RESET);
 

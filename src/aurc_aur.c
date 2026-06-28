@@ -616,8 +616,10 @@ void upgradeAurPackages()
             {
                 if (vercmpResult(installed[j].version, aurVer) < 0)
                 {
-                    printf("  " YELLOW "%s" RESET " %s -> " GREEN "%s" RESET "\n",
-                           aurName, installed[j].version, aurVer);
+                    if (updateCount == 0)
+                        printf("\n" BOLD "AUR packages to upgrade:" RESET "\n\n");
+                    printf("  %2d  " MAGENTA "aur/" RESET BOLD "%-25s" RESET GRAY "%s" RESET " -> " GREEN "%s" RESET "\n",
+                           updateCount + 1, aurName, installed[j].version, aurVer);
                     toUpdate[updateCount++] = strdup(aurName);
                 }
                 break;
