@@ -287,6 +287,18 @@ static int confirmTransaction(alpm_handle_t *handle, const char *verb)
     return tolower(buf[0]) == 'y' || buf[0] == '\n';
 }
 
+static int transInit(alpm_handle_t *handle, alpm_transflag_t flags)
+{
+    if (alpm_trans_init(handle, flags) != 0)
+    {
+        fprintf(stderr, RED "Failed to start transaction: %s\n" RESET,
+                alpm_strerror(alpm_errno(handle)));
+        alpm_release(handle);
+        return 0;
+    }
+    return 1;
+}
+
 static void commitOrAbort(alpm_handle_t *handle, const char *verb)
 {
     if (confirmTransaction(handle, verb))
@@ -459,9 +471,8 @@ void installPackages(int argc, char *argv[])
         else
         {
             alpm_handle_t *handle = alpmInitCallbacks();
-            if (handle)
+            if (handle && transInit(handle, 0))
             {
-                alpm_trans_init(handle, 0);
                 alpm_list_t *syncdbs = alpm_get_syncdbs(handle);
                 for (int i = 0; i < repoCount; i++)
                 {
@@ -494,7 +505,7 @@ void installPackagesForce(int argc, char *argv[])
     if (argc < 3) { fprintf(stderr, RED "Usage: %s install-force <package1> ...\n" RESET, argv[0]); return; }
     alpm_handle_t *handle = alpmInitCallbacks();
     if (!handle) return;
-    alpm_trans_init(handle, ALPM_TRANS_FLAG_NODEPVERSION | ALPM_TRANS_FLAG_NODEPS);
+    if (!transInit(handle, ALPM_TRANS_FLAG_NODEPVERSION | ALPM_TRANS_FLAG_NODEPS)) return;
     alpm_list_t *sdbs = alpm_get_syncdbs(handle);
     for (int i = 2; i < argc; i++)
     {
@@ -518,7 +529,7 @@ void installLocalPackages(int argc, char *argv[])
         alpm_release(handle);
         return;
     }
-    alpm_trans_init(handle, 0);
+    if (!transInit(handle, 0)) return;
     alpm_add_pkg(handle, pkg);
     commitOrAbort(handle, "install");
 }
@@ -528,7 +539,7 @@ static void alpmRemove(int argc, char *argv[], alpm_transflag_t flags, const cha
     if (argc < 3) { fprintf(stderr, RED "Usage: %s %s\n" RESET, argv[0], usage); return; }
     alpm_handle_t *handle = alpmInitCallbacks();
     if (!handle) return;
-    alpm_trans_init(handle, flags);
+    if (!transInit(handle, flags)) return;
     alpm_db_t *localdb = alpm_get_localdb(handle);
     for (int i = 2; i < argc; i++)
     {
@@ -567,7 +578,7 @@ void removeOrphanPackages(void)
     if (!handle) return;
     alpm_db_t *localdb = alpm_get_localdb(handle);
     alpm_list_t *pkgs = alpm_db_get_pkgcache(localdb);
-    alpm_trans_init(handle, ALPM_TRANS_FLAG_RECURSE | ALPM_TRANS_FLAG_NOSAVE);
+    if (!transInit(handle, ALPM_TRANS_FLAG_RECURSE | ALPM_TRANS_FLAG_NOSAVE)) return;
     int found = 0;
     for (alpm_list_t *i = pkgs; i; i = alpm_list_next(i))
     {
@@ -717,7 +728,7 @@ void updateSystem(void)
     printSection("Synchronizing package databases...");
     alpm_list_t *syncdbs = alpm_get_syncdbs(handle);
     alpm_db_update(handle, syncdbs, 0);
-    alpm_trans_init(handle, 0);
+    if (!transInit(handle, 0)) return;
     alpm_sync_sysupgrade(handle, 0);
     commitOrAbort(handle, "upgrade");
 }
@@ -788,7 +799,7 @@ static void checkAurcVersion(void)
 void fullUpdate(char *selfPath)
 {
     checkAurcVersion();
-    printBox("aurc — full system update");
+    printBox("aurc");
     printSection("Updating system packages...");
     if (geteuid() != 0)
     {
