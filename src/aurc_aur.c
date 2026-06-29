@@ -207,8 +207,10 @@ void installAurPackages(char **packageNames, unsigned int numPackages)
             }
         }
 
-        char buildCommand[600];
-        snprintf(buildCommand, sizeof(buildCommand), "cd %s%s && makepkg -si", downloadDir, packageName);
+        /* --pkg restricts a split PKGBUILD to just the requested package */
+        char buildCommand[700];
+        snprintf(buildCommand, sizeof(buildCommand), "cd %s%s && makepkg -si --pkg=%s",
+                 downloadDir, packageName, packageName);
 
         pid_t pid = fork();
         if (pid == -1)
